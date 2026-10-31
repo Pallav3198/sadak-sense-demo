@@ -1378,7 +1378,8 @@ window.SS = {
   tiles(map) {
     // OpenStreetMap standard tiles, rendered dark with a CSS filter. For production, swap in the
     // navigation partner's tile service (see README); OSM's public tiles are for light use only.
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, className: "dark-tiles",
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, className: "dark-tiles",
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
   },
@@ -1480,71 +1481,51 @@ window.SS = {
 </script>
 
 <script>
-// Sadak Sense "Fits my car": the part only the carmaker can do. Map apps know the road; the car
-// knows its own model, ground clearance, wading limit and how many people are on board, and it
-// remembers every hit it has taken. Pure functions, shared by the driver app and the tests.
+// Sadak Sense "My car": the part only the carmaker can do. Map apps know the road; the car knows
+// its own model, how many people are on board and every hit it has taken. Breaker advice is a
+// gentle, load-aware speed suggestion (no height or depth claims); road wear feeds service and
+// claims. Pure functions, shared by the driver app and the tests.
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.SadakCar = factory();
 })(typeof self !== "undefined" ? self : this, function () {
-  // Approximate published ground clearance (unladen). Safe water depth is an assumption for the
-  // prototype; in a production car both come from the exact VIN specification.
+  // Approximate published ground clearance (unladen); in a production car it comes from the VIN.
   const CARS = {
-    aura:  { name: "Aura",  clearanceMm: 165, wadeMm: 250 },
-    exter: { name: "Exter", clearanceMm: 185, wadeMm: 280 },
-    venue: { name: "Venue", clearanceMm: 195, wadeMm: 300 },
-    creta: { name: "Creta", clearanceMm: 190, wadeMm: 300 },
-    bayon: { name: "Bayon", clearanceMm: 190, wadeMm: 300, assumed: true },
+    aura:  { name: "Aura",  clearanceMm: 165 },
+    exter: { name: "Exter", clearanceMm: 185 },
+    venue: { name: "Venue", clearanceMm: 195 },
+    creta: { name: "Creta", clearanceMm: 190 },
+    bayon: { name: "Bayon", clearanceMm: 190, assumed: true },
   };
-  const SAG_PER_PASSENGER_MM = 6; // suspension squat for each person beyond the driver (model)
-  const IRC_MAX_BREAKER_CM = 10;  // IRC:99 rounded hump height
+  const SAG_PER_PASSENGER_MM = 6;  // suspension squat for each person beyond the driver (model)
+  const LOW_SITTING_MM = 160;      // below this laden clearance, suggest a gentler crossing
+  const HARD_SEVERITY = 1.2;       // fleet median jolt (normalised to 30 km/h) that counts as a hard breaker
 
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   function effectiveClearanceMm(car, people = 1) { return car.clearanceMm - SAG_PER_PASSENGER_MM * clamp(people - 1, 0, 6); }
 
-  // Breaker height from the fleet's median jolt (normalised to 30 km/h). Calibration model for the
-  // prototype; production calibrates against surveyed breakers.
-  function breakerHeightCm(severity) { return clamp(Math.round(4 + 8 * (Number.isFinite(severity) ? severity : 1)), 5, 20); }
-
-  // Water depth for a waterlogged stretch. In production: the highest-clearance car that turned
-  // back or stalled versus the lowest one that crossed. In the demo: a stable value per hazard.
-  function waterDepthCm(h) {
-    if (Number.isFinite(h.depthCm)) return h.depthCm;
-    const s = String(h.id ?? `${h.lat},${h.lon}`); let x = 0; for (const c of s) x = (x * 31 + c.charCodeAt(0)) >>> 0;
-    return 22 + (x % 20);
-  }
-
-  // Verdict for one hazard and one car: level (low | medium | high | stop), safe speed, and words.
+  // Advice for one hazard and one car. Breakers: base 20 km/h, slower if the fleet felt it hard,
+  // slower again if this car sits low with its current load. Water gets no car verdict.
   function check(carId, people, h) {
     const car = CARS[carId] || CARS.creta;
     const eff = effectiveClearanceMm(car, people);
-    if (h.type === "water" || h.family === "water") {
-      const d = waterDepthCm(h), ratio = (d * 10) / car.wadeMm;
-      const level = ratio > 1 ? "stop" : ratio > 0.75 ? "high" : "low";
-      return { kind: "water", level, depthCm: d, limitCm: Math.round(car.wadeMm / 10), speed: level === "stop" ? 0 : level === "high" ? 5 : 10, car, people };
-    }
+    if (h.type === "water" || h.family === "water") return { kind: "water", level: "info", car, people, devices: h.devices };
     if (h.type === "breaker") {
-      const hc = breakerHeightCm(h.severity), ratio = (hc * 10) / eff;
-      const level = ratio >= 0.8 ? "high" : ratio >= 0.6 ? "medium" : "low";
-      return { kind: "breaker", level, heightCm: hc, overIrc: hc > IRC_MAX_BREAKER_CM, effMm: eff, speed: { high: 10, medium: 15, low: 20 }[level], car, people };
+      const hard = (h.severity ?? 1) >= HARD_SEVERITY, low = eff < LOW_SITTING_MM;
+      const speed = 20 - (hard ? 5 : 0) - (low ? 5 : 0);
+      return { kind: "breaker", level: speed <= 10 ? "high" : speed <= 15 ? "medium" : "low", hard, low, effMm: eff, speed, car, people };
     }
     return { kind: "pothole", level: (h.severity ?? 1) > 1.3 ? "high" : "medium", effMm: eff, speed: 20, car, people };
   }
 
-  // One short line for the alert card / voice, in the driver's language.
+  // One short line for the car strip / voice, in the driver's language.
   function line(v, lang = "English") {
     const n = v.car.name, p = v.people;
-    const who = { English: `${n} with ${p} on board`, Hinglish: `${p} logon ke saath aapki ${n}`, Hindi: `${p} लोगों के साथ आपकी ${n}` }[lang];
-    if (v.kind === "water") {
-      if (v.level === "stop") return { English: `About ${v.depthCm} cm of water. Your ${n} is safe to about ${v.limitCm} cm. Do not enter.`, Hinglish: `Lagbhag ${v.depthCm} cm paani hai. Aapki ${n} ${v.limitCm} cm tak hi safe hai. Andar mat jaiye.`, Hindi: `लगभग ${v.depthCm} सेमी पानी है। आपकी ${n} ${v.limitCm} सेमी तक ही सुरक्षित है। अंदर न जाएँ।` }[lang];
-      if (v.level === "high") return { English: `About ${v.depthCm} cm of water, close to your ${n}'s ${v.limitCm} cm limit. Walking pace, don't stop.`, Hinglish: `Lagbhag ${v.depthCm} cm paani, aapki ${n} ki ${v.limitCm} cm limit ke kareeb. Dheere chaliye, rukiye mat.`, Hindi: `लगभग ${v.depthCm} सेमी पानी, आपकी ${n} की ${v.limitCm} सेमी सीमा के क़रीब। धीरे चलें, रुकें नहीं।` }[lang];
-      return { English: `About ${v.depthCm} cm of water. Your ${n} can cross slowly.`, Hinglish: `Lagbhag ${v.depthCm} cm paani. Aapki ${n} dheere nikal jayegi.`, Hindi: `लगभग ${v.depthCm} सेमी पानी। आपकी ${n} धीरे निकल जाएगी।` }[lang];
-    }
+    if (v.kind === "water") return { English: `Cars are crawling and stalling here. Better to take another road.`, Hinglish: `Yahan gaadiyan atak rahi hain. Doosra raasta behtar hai.`, Hindi: `यहाँ गाड़ियाँ अटक रही हैं। दूसरा रास्ता बेहतर है।` }[lang];
     if (v.kind === "breaker") {
-      const tall = v.overIrc ? { English: " (taller than the 10 cm norm)", Hinglish: " (10 cm norm se ooncha)", Hindi: " (10 सेमी मानक से ऊँचा)" }[lang] : "";
-      if (v.level === "high") return { English: `${v.heightCm} cm breaker${tall}. ${who}: scrape risk. Cross at ${v.speed}.`, Hinglish: `${v.heightCm} cm ka breaker${tall}. ${who} neeche lag sakti hai. ${v.speed} pe nikaliye.`, Hindi: `${v.heightCm} सेमी का ब्रेकर${tall}। ${who} नीचे लग सकती है। ${v.speed} पर निकालें।` }[lang];
-      if (v.level === "medium") return { English: `${v.heightCm} cm breaker${tall}. ${who}: cross at ${v.speed}.`, Hinglish: `${v.heightCm} cm ka breaker${tall}. ${who}: ${v.speed} pe nikaliye.`, Hindi: `${v.heightCm} सेमी का ब्रेकर${tall}। ${who}: ${v.speed} पर निकालें।` }[lang];
-      return { English: `${v.heightCm} cm breaker. Your ${n} clears it at ${v.speed}.`, Hinglish: `${v.heightCm} cm ka breaker. Aapki ${n} ${v.speed} pe aaram se nikal jayegi.`, Hindi: `${v.heightCm} सेमी का ब्रेकर। आपकी ${n} ${v.speed} पर आराम से निकल जाएगी।` }[lang];
+      const hard = v.hard ? { English: "Cars feel this breaker hard. ", Hinglish: "Is breaker pe gaadiyon ko zor ka jhatka lagta hai. ", Hindi: "इस ब्रेकर पर गाड़ियों को ज़ोर का झटका लगता है। " }[lang] : "";
+      if (v.low) return { English: `${hard}With ${p} on board your ${n} sits lower: slow to ${v.speed}.`, Hinglish: `${hard}${p} logon ke saath aapki ${n} neeche baithi hai: ${v.speed} tak dheere kijiye.`, Hindi: `${hard}${p} लोगों के साथ आपकी ${n} नीचे बैठी है: ${v.speed} तक धीमे करें।` }[lang];
+      return { English: `${hard}Your ${n}: cross at ${v.speed}.`, Hinglish: `${hard}Aapki ${n}: ${v.speed} pe nikaliye.`, Hindi: `${hard}आपकी ${n}: ${v.speed} पर निकालें।` }[lang];
     }
     return v.level === "high"
       ? { English: `Deep pothole. Risky for your ${n}'s tyres and rims.`, Hinglish: `Gehra gaddha. Aapki ${n} ke tyre aur rim ke liye risky.`, Hindi: `गहरा गड्ढा। आपकी ${n} के टायर और रिम के लिए जोखिम।` }[lang]
@@ -1558,7 +1539,7 @@ window.SS = {
     return { hits: hits.length, dose: Math.round(dose), pct, due: pct >= 80 };
   }
 
-  return { CARS, IRC_MAX_BREAKER_CM, effectiveClearanceMm, breakerHeightCm, waterDepthCm, check, line, wear };
+  return { CARS, effectiveClearanceMm, check, line, wear };
 });
 
 </script>
@@ -1678,7 +1659,7 @@ function tick() {
   renderCar(next ? S.carCheck : null);
   // Flood agent: water ahead that this car should not (or only just) cross.
   const wAhead = S.known.find((h) => h.family === "water" && h.state === "confirmed" && SS.hav(lat, lon, h.lat, h.lon) < 900 && (heading == null || SS.hdiff(SS.bearing(lat, lon, h.lat, h.lon), heading) < 40));
-  if (wAhead) { const wv = SadakCar.check(S.car, S.people, wAhead); if (wv.level !== "low") floodAgent(wAhead, wv); }
+  if (wAhead) floodAgent(wAhead);
   if (next && nextD < warnD + 150) {
     const dist = Math.max(10, Math.round(nextD / 10) * 10);
     const [t, s] = PHRASE[next.type][S.lang](dist);
@@ -1751,12 +1732,12 @@ async function startDemo(routeId) {
     const dt = 0.1;
     let target = 32 / 3.6;
     const al = $("alert").className, cv = S.carCheck;
-    if (al.includes("breaker")) target = (cv?.kind === "breaker" ? cv.speed : 18) / 3.6; else if (al.includes("pothole")) target = 22 / 3.6; else if (al.includes("water")) target = (cv?.kind === "water" ? Math.max(4, cv.speed) : 9) / 3.6;
+    if (al.includes("breaker")) target = (cv?.kind === "breaker" ? cv.speed : 18) / 3.6; else if (al.includes("pothole")) target = 22 / 3.6; else if (al.includes("water")) target = 9 / 3.6;
     const water = truth.find((t) => t.type === "water" && t.active);
     if (water && Math.abs(s - water.s) < 70) target = 5 / 3.6;
     v += (target - v) * 0.12;
-    // Rerouted by the flood agent, or "do not enter" for this car: the demo driver turns back before the water.
-    if (water && s > water.s - 90 && (S.reroute === true || (S.reroute !== false && cv?.kind === "water" && cv.level === "stop"))) {
+    // Rerouted by the flood agent: the demo driver turns back before the water.
+    if (water && s > water.s - 90 && S.reroute === true) {
       s = Math.max(0, firstS - 300); crossed.clear(); S.alerted.clear();
       $("tNote").textContent = { English: "turned back before the water · rerouting", Hinglish: "paani se pehle wapas mude · doosra raasta", Hindi: "पानी से पहले वापस मुड़े · दूसरा रास्ता" }[S.lang];
     }
@@ -1802,7 +1783,7 @@ function renderCar(v) {
 function renderHealth() {
   const car = SadakCar.CARS[S.car], w = SadakCar.wear(S.hits);
   $("hTitle").textContent = `My ${car.name}`;
-  $("hSpec").textContent = `Ground clearance ${car.clearanceMm} mm unladen, ${SadakCar.effectiveClearanceMm(car, S.people)} mm with ${S.people} on board · safe water depth about ${car.wadeMm / 10} cm${car.assumed ? " (assumed)" : ""}. In the car these come from the VIN, live load and seat sensors.`;
+  $("hSpec").textContent = `Ground clearance about ${car.clearanceMm} mm unladen${car.assumed ? " (assumed)" : ""}, lower with ${S.people} on board. In the car this comes from the VIN and seat sensors; hits come from the car's own motion and tyre-pressure sensors.`;
   $("hPct").textContent = `${w.pct}%`; $("hBar").style.width = w.pct + "%";
   $("hMsg").textContent = w.due ? `${w.hits} hard hits this week. A suspension and alignment check is due before tyre wear shows.` : `${w.hits} hard hits this week. No check needed yet.`;
   $("hLog").innerHTML = "";
@@ -1837,14 +1818,12 @@ function tellHome(msg) {
   bubble("a", T3("Message to Home · demo", "Ghar ko message · demo", "घर को संदेश · डेमो"), `“${msg}”`);
   return true;
 }
-function floodAgent(h, v) {
-  const text = v.level === "stop"
-    ? T3(`The underpass ahead has about ${v.depthCm} cm of water, not safe for your ${v.car.name}. Shall I take the other road?`,
-         `Aage underpass mein lagbhag ${v.depthCm} cm paani hai, aapki ${v.car.name} ke liye safe nahi. Doosre raaste se le chalun?`,
-         `आगे अंडरपास में लगभग ${v.depthCm} सेमी पानी है, आपकी ${v.car.name} के लिए सुरक्षित नहीं। दूसरे रास्ते से ले चलूँ?`)
-    : T3(`About ${v.depthCm} cm of water in the underpass, close to your ${v.car.name}'s limit. Shall I take the other road?`,
-         `Underpass mein lagbhag ${v.depthCm} cm paani hai, aapki ${v.car.name} ki limit ke kareeb. Doosre raaste se le chalun?`,
-         `अंडरपास में लगभग ${v.depthCm} सेमी पानी है, आपकी ${v.car.name} की सीमा के क़रीब। दूसरे रास्ते से ले चलूँ?`);
+// Flood agent: a waterlogged stretch ahead, confirmed by cars crawling or stalling in rain.
+function floodAgent(h) {
+  const n = h.devices || 3;
+  const text = T3(`The underpass ahead is waterlogged: ${n} cars crawled or got stuck there in the last 30 minutes. Shall I take the other road?`,
+    `Aage underpass mein paani bhara hai: pichhle 30 minute mein ${n} gaadiyan wahan atkin. Doosre raaste se le chalun?`,
+    `आगे अंडरपास में पानी भरा है: पिछले 30 मिनट में ${n} गाड़ियाँ वहाँ अटकीं। दूसरे रास्ते से ले चलूँ?`);
   propose("flood-" + h.id, text,
     () => { S.reroute = true;
             const told = tellHome(T3("The underpass is flooded, coming by another road. About 10 minutes late.", "Underpass mein paani bhara hai, doosre raaste se aa rahe hain. Lagbhag 10 minute late.", "अंडरपास में पानी भरा है, दूसरे रास्ते से आ रहे हैं। लगभग 10 मिनट देर।"));
