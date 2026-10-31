@@ -772,6 +772,20 @@ body{display:grid;place-items:center;min-height:100%;background:radial-gradient(
 .brief{position:absolute;left:14px;right:14px;bottom:84px;z-index:800;background:var(--panel2);border:1px solid var(--line2);border-radius:16px;padding:12px 14px;font-size:14px;display:none}
 .brief.show{display:block}
 .brief .label{margin-bottom:4px}
+/* Fits my car: the carmaker-only layer under the alert */
+.car{margin:8px 14px 0;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;cursor:pointer;color:inherit;text-align:left;width:calc(100% - 28px)}
+.car .cn{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.car .cl{flex:1;min-width:0;line-height:1.3}
+.car .cw{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.car.low{border-color:color-mix(in srgb,var(--ok) 55%,var(--line))}
+.car.medium{border-color:var(--breaker)}.car.high{border-color:var(--pothole);background:color-mix(in srgb,var(--pothole) 10%,var(--panel))}
+.car.stop{border-color:var(--pothole);background:color-mix(in srgb,var(--pothole) 22%,var(--panel));font-weight:600}
+.health{position:absolute;left:14px;right:14px;bottom:84px;z-index:860;background:rgba(17,24,35,.98);border:1px solid var(--line2);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;max-height:72%;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.health h3{font-family:var(--display);font-size:18px;margin:0}
+.bar{height:10px;border-radius:999px;background:var(--panel2);overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ok),var(--breaker),var(--pothole))}
+.hlog{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.health .btn{padding:10px;border-radius:12px;text-align:left}
+.health .note{font-size:11px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -784,6 +798,7 @@ body{display:grid;place-items:center;min-height:100%;background:radial-gradient(
     <div class="ic">✓</div><div><div class="t" id="aT">Road ahead is clear</div><div class="s" id="aS">No confirmed hazards in the next stretch</div></div>
     <div class="dist" id="aD"></div>
   </div>
+  <button class="car" id="carBar" type="button" aria-label="My car and road wear"><span class="cn" id="carName">My car</span><span class="cl" id="carLine">Checks every hazard against this car's clearance and load</span><span class="cw" id="carWear">wear 0%</span></button>
   <div class="mid">
     <div class="speed"><span id="spd">0</span> <small>km/h</small></div>
     <div class="meta"><div><b id="mRoad">—</b></div><div>Hazards known nearby: <b id="mKnown">0</b></div><div>Jolts detected: <b id="mJolts">0</b></div></div>
@@ -804,12 +819,25 @@ body{display:grid;place-items:center;min-height:100%;background:radial-gradient(
     <form class="say" id="sayForm"><label for="sayIn" style="position:absolute;left:-9999px">Say something</label><input id="sayIn" placeholder="Bolo ya type karo…" autocomplete="off"><button class="btn" type="submit">Send</button></form>
   </div>
   <div class="brief" id="brief"><div class="label">Morning road brief</div><div id="briefT"></div></div>
+  <div class="health" id="health" hidden>
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 id="hTitle">My car</h3><button class="btn" id="hClose" type="button" style="padding:6px 10px">Close</button></div>
+    <div class="note" id="hSpec"></div>
+    <div><div class="label" style="display:flex;justify-content:space-between"><span>Road wear this week</span><span id="hPct">0%</span></div><div class="bar"><i id="hBar" style="width:0%"></i></div></div>
+    <div id="hMsg" style="font-size:13.5px"></div>
+    <button class="btn" id="hBook" type="button"><b>Book a free suspension and alignment check</b><br><span class="note">Nearest Hyundai service centre, with this week's hit log attached</span></button>
+    <div class="label">Damage log · for a service or insurance claim</div>
+    <div class="hlog" id="hLog"></div>
+    <div class="note">Only this car's owner sees this log. It stays in the car unless the owner shares it. Hit history before this drive is a demo sample.</div>
+  </div>
 
   <div class="sheet" id="start">
     <div class="brand" style="font-size:15px">SADAK <b>SENSE</b></div>
     <h1>Your car feels the road. Now it warns the next driver.</h1>
     <p>Mount the phone in a holder. It reads the accelerometer and GPS, detects speed breakers and potholes, shares anonymous jolt reports, and warns you before hazards other cars have confirmed.</p>
     <div class="field"><label class="label" for="lang">Voice language</label><select id="lang"><option>English</option><option selected>Hinglish</option><option>Hindi</option></select></div>
+    <div class="field"><label class="label" for="carSel">My car</label><select id="carSel"><option value="aura">Hyundai Aura</option><option value="exter">Hyundai Exter</option><option value="venue">Hyundai Venue</option><option value="creta" selected>Hyundai Creta</option><option value="bayon">Hyundai Bayon</option></select></div>
+    <div class="field"><label class="label" for="people">People in the car</label><select id="people"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select></div>
+    <div class="field"><label class="label" for="homeOn">Keep home updated</label><input type="checkbox" id="homeOn" checked></div>
     <div class="field"><label class="label" for="rain">It is raining</label><input type="checkbox" id="rain"></div>
     <button class="btn primary" id="realBtn" type="button"><b>Start driving</b><span>Uses this phone's real motion sensors and GPS</span></button>
     <div class="field"><label class="label" for="route">Demo route</label><select id="route"></select></div>
@@ -843,6 +871,8 @@ body{display:grid;place-items:center;min-height:100%;background:radial-gradient(
     const no = /^\s*(nahi|nahin|na|no|nope|galat|नहीं|ना)(?=$|[\s?.!,।])/;
     if (has(t, yes) && t.split(/\s+/).length <= 3) return { name: "yes" };
     if (has(t, no) && t.split(/\s+/).length <= 3) return { name: "no" };
+    // "Will my car make it?": answered from the car's own clearance, load and wading limit.
+    if (has(t, /(meri (gaadi|gadi|car)|my car|nikal (jayegi|jaayegi|jaegi|payegi|paayegi)|neeche lag|scrape|clearance|मेरी गाड़ी|मेरी कार|निकल (जाएगी|पाएगी))/)) return { name: "ask_car" };
     const pothole = /(gaddh|gadd?a|khadd|pothole|crater|गड्ढ|गढ्ढ)/, breaker = /(speed ?breaker|breaker|bump|hump|ब्रेकर)/, water = /(paani|pani|water|flood|bhar(a|aa)|jal ?bhar|underpass|पानी|जलभराव|अंडरपास|बाढ़)/;
     const here = /(yahan|yaha|idhar|here|abhi|यहाँ|यहां|इधर)/;
     const question = /(\?|kya|koi|kahan|kitne|kitna|is there|any|what|where|how many|क्या|कोई|कितने)/;
@@ -898,6 +928,10 @@ body{display:grid;place-items:center;min-height:100%;background:radial-gradient(
           `आपके रूट पर ${b.breakers} ${word(L, "breaker", b.breakers)} और ${b.potholes} ${word(L, "pothole", b.potholes)} की पुष्टि हुई है।${b.water ? " अंडरपास में पानी भरा है, दूसरा रास्ता लें।" : ""}`);
         break;
       }
+      case "ask_car":
+        // ctx.carCheck: the "Fits my car" line for the next hazard, already in the driver's language
+        out = ctx.carCheck || say("Nothing ahead that your car needs to worry about.", "Aage aapki gaadi ke liye kuch khatarnaak nahi hai.", "आगे आपकी गाड़ी के लिए कुछ ख़तरनाक नहीं है।");
+        break;
       case "report":
         action = { report: it.type };
         out = it.type === "crawl" ? say("Thanks, I've reported waterlogging here. Other drivers will be warned once more cars confirm it.", "Shukriya, yahan paani bhara hone ki report bhej di. Aur gaadiyan confirm karengi toh sabko bataya jayega.", "धन्यवाद, यहाँ जलभराव की रिपोर्ट भेज दी। और गाड़ियाँ पुष्टि करेंगी तो सबको बताया जाएगा।")
@@ -912,7 +946,7 @@ body{display:grid;place-items:center;min-height:100%;background:radial-gradient(
         out = ctx.pending ? say("Got it, I won't report that jolt.", "Theek hai, wo jhatka report nahi karunga.", "ठीक है, वह झटका रिपोर्ट नहीं करूँगा।") : say("Okay.", "Theek hai.", "ठीक है।");
         break;
       case "help":
-        out = say("Ask me what's ahead, whether the underpass is flooded, or for today's road brief. Say 'pothole here' to report one.", "Mujhse poochhiye aage kya hai, underpass mein paani hai kya, ya aaj ka road brief. Report ke liye boliye 'yahan gaddha hai'.", "मुझसे पूछिए आगे क्या है, अंडरपास में पानी है क्या, या आज का रोड ब्रीफ़। रिपोर्ट के लिए बोलिए 'यहाँ गड्ढा है'।");
+        out = say("Ask me what's ahead, whether the underpass is flooded, whether your car will make it, or for today's road brief. Say 'pothole here' to report one.", "Mujhse poochhiye aage kya hai, underpass mein paani hai kya, meri gaadi nikal jayegi kya, ya aaj ka road brief. Report ke liye boliye 'yahan gaddha hai'.", "मुझसे पूछिए आगे क्या है, अंडरपास में पानी है क्या, मेरी गाड़ी निकल जाएगी क्या, या आज का रोड ब्रीफ़। रिपोर्ट के लिए बोलिए 'यहाँ गड्ढा है'।");
         break;
       default:
         out = say("Sorry, I didn't get that. You can ask what's ahead or report a pothole.", "Maaf kijiye, samajh nahi aaya. Aap pooch sakte hain aage kya hai, ya gaddha report kar sakte hain.", "माफ़ कीजिए, समझ नहीं आया। आप पूछ सकते हैं आगे क्या है, या गड्ढा रिपोर्ट कर सकते हैं।");
@@ -1446,11 +1480,94 @@ window.SS = {
 </script>
 
 <script>
+// Sadak Sense "Fits my car": the part only the carmaker can do. Map apps know the road; the car
+// knows its own model, ground clearance, wading limit and how many people are on board, and it
+// remembers every hit it has taken. Pure functions, shared by the driver app and the tests.
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.SadakCar = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  // Approximate published ground clearance (unladen). Safe water depth is an assumption for the
+  // prototype; in a production car both come from the exact VIN specification.
+  const CARS = {
+    aura:  { name: "Aura",  clearanceMm: 165, wadeMm: 250 },
+    exter: { name: "Exter", clearanceMm: 185, wadeMm: 280 },
+    venue: { name: "Venue", clearanceMm: 195, wadeMm: 300 },
+    creta: { name: "Creta", clearanceMm: 190, wadeMm: 300 },
+    bayon: { name: "Bayon", clearanceMm: 190, wadeMm: 300, assumed: true },
+  };
+  const SAG_PER_PASSENGER_MM = 6; // suspension squat for each person beyond the driver (model)
+  const IRC_MAX_BREAKER_CM = 10;  // IRC:99 rounded hump height
+
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  function effectiveClearanceMm(car, people = 1) { return car.clearanceMm - SAG_PER_PASSENGER_MM * clamp(people - 1, 0, 6); }
+
+  // Breaker height from the fleet's median jolt (normalised to 30 km/h). Calibration model for the
+  // prototype; production calibrates against surveyed breakers.
+  function breakerHeightCm(severity) { return clamp(Math.round(4 + 8 * (Number.isFinite(severity) ? severity : 1)), 5, 20); }
+
+  // Water depth for a waterlogged stretch. In production: the highest-clearance car that turned
+  // back or stalled versus the lowest one that crossed. In the demo: a stable value per hazard.
+  function waterDepthCm(h) {
+    if (Number.isFinite(h.depthCm)) return h.depthCm;
+    const s = String(h.id ?? `${h.lat},${h.lon}`); let x = 0; for (const c of s) x = (x * 31 + c.charCodeAt(0)) >>> 0;
+    return 22 + (x % 20);
+  }
+
+  // Verdict for one hazard and one car: level (low | medium | high | stop), safe speed, and words.
+  function check(carId, people, h) {
+    const car = CARS[carId] || CARS.creta;
+    const eff = effectiveClearanceMm(car, people);
+    if (h.type === "water" || h.family === "water") {
+      const d = waterDepthCm(h), ratio = (d * 10) / car.wadeMm;
+      const level = ratio > 1 ? "stop" : ratio > 0.75 ? "high" : "low";
+      return { kind: "water", level, depthCm: d, limitCm: Math.round(car.wadeMm / 10), speed: level === "stop" ? 0 : level === "high" ? 5 : 10, car, people };
+    }
+    if (h.type === "breaker") {
+      const hc = breakerHeightCm(h.severity), ratio = (hc * 10) / eff;
+      const level = ratio >= 0.8 ? "high" : ratio >= 0.6 ? "medium" : "low";
+      return { kind: "breaker", level, heightCm: hc, overIrc: hc > IRC_MAX_BREAKER_CM, effMm: eff, speed: { high: 10, medium: 15, low: 20 }[level], car, people };
+    }
+    return { kind: "pothole", level: (h.severity ?? 1) > 1.3 ? "high" : "medium", effMm: eff, speed: 20, car, people };
+  }
+
+  // One short line for the alert card / voice, in the driver's language.
+  function line(v, lang = "English") {
+    const n = v.car.name, p = v.people;
+    const who = { English: `${n} with ${p} on board`, Hinglish: `${p} logon ke saath aapki ${n}`, Hindi: `${p} लोगों के साथ आपकी ${n}` }[lang];
+    if (v.kind === "water") {
+      if (v.level === "stop") return { English: `About ${v.depthCm} cm of water. Your ${n} is safe to about ${v.limitCm} cm. Do not enter.`, Hinglish: `Lagbhag ${v.depthCm} cm paani hai. Aapki ${n} ${v.limitCm} cm tak hi safe hai. Andar mat jaiye.`, Hindi: `लगभग ${v.depthCm} सेमी पानी है। आपकी ${n} ${v.limitCm} सेमी तक ही सुरक्षित है। अंदर न जाएँ।` }[lang];
+      if (v.level === "high") return { English: `About ${v.depthCm} cm of water, close to your ${n}'s ${v.limitCm} cm limit. Walking pace, don't stop.`, Hinglish: `Lagbhag ${v.depthCm} cm paani, aapki ${n} ki ${v.limitCm} cm limit ke kareeb. Dheere chaliye, rukiye mat.`, Hindi: `लगभग ${v.depthCm} सेमी पानी, आपकी ${n} की ${v.limitCm} सेमी सीमा के क़रीब। धीरे चलें, रुकें नहीं।` }[lang];
+      return { English: `About ${v.depthCm} cm of water. Your ${n} can cross slowly.`, Hinglish: `Lagbhag ${v.depthCm} cm paani. Aapki ${n} dheere nikal jayegi.`, Hindi: `लगभग ${v.depthCm} सेमी पानी। आपकी ${n} धीरे निकल जाएगी।` }[lang];
+    }
+    if (v.kind === "breaker") {
+      const tall = v.overIrc ? { English: " (taller than the 10 cm norm)", Hinglish: " (10 cm norm se ooncha)", Hindi: " (10 सेमी मानक से ऊँचा)" }[lang] : "";
+      if (v.level === "high") return { English: `${v.heightCm} cm breaker${tall}. ${who}: scrape risk. Cross at ${v.speed}.`, Hinglish: `${v.heightCm} cm ka breaker${tall}. ${who} neeche lag sakti hai. ${v.speed} pe nikaliye.`, Hindi: `${v.heightCm} सेमी का ब्रेकर${tall}। ${who} नीचे लग सकती है। ${v.speed} पर निकालें।` }[lang];
+      if (v.level === "medium") return { English: `${v.heightCm} cm breaker${tall}. ${who}: cross at ${v.speed}.`, Hinglish: `${v.heightCm} cm ka breaker${tall}. ${who}: ${v.speed} pe nikaliye.`, Hindi: `${v.heightCm} सेमी का ब्रेकर${tall}। ${who}: ${v.speed} पर निकालें।` }[lang];
+      return { English: `${v.heightCm} cm breaker. Your ${n} clears it at ${v.speed}.`, Hinglish: `${v.heightCm} cm ka breaker. Aapki ${n} ${v.speed} pe aaram se nikal jayegi.`, Hindi: `${v.heightCm} सेमी का ब्रेकर। आपकी ${n} ${v.speed} पर आराम से निकल जाएगी।` }[lang];
+    }
+    return v.level === "high"
+      ? { English: `Deep pothole. Risky for your ${n}'s tyres and rims.`, Hinglish: `Gehra gaddha. Aapki ${n} ke tyre aur rim ke liye risky.`, Hindi: `गहरा गड्ढा। आपकी ${n} के टायर और रिम के लिए जोखिम।` }[lang]
+      : { English: `Pothole. Slow down to protect your ${n}'s suspension.`, Hinglish: `Gaddha hai. ${n} ke suspension ke liye dheere chaliye.`, Hindi: `गड्ढा है। ${n} के सस्पेंशन के लिए धीरे चलें।` }[lang];
+  }
+
+  // Road-wear dose: how hard this car has been hit. Feeds the service and claim features.
+  function wear(hits, thresholdDose = 300) {
+    const dose = hits.reduce((s, h) => s + Math.max(0, (h.peakG ?? 0.6) - 0.3) * 10, 0);
+    const pct = Math.round(Math.min(100, (100 * dose) / thresholdDose));
+    return { hits: hits.length, dose: Math.round(dose), pct, due: pct >= 80 };
+  }
+
+  return { CARS, IRC_MAX_BREAKER_CM, effectiveClearanceMm, breakerHeightCm, waterDepthCm, check, line, wear };
+});
+
+</script>
+<script>
 // Sadak Sense driver app: real sensors (or a demo drive), on-device detection, anonymous
 // reporting, clean-pass reporting, and voice alerts for hazards confirmed by other cars.
 const $ = (id) => document.getElementById(id);
 const G = 9.80665;
-const S = { mode: null, lang: "Hinglish", voice: true, rain: false, pos: null, known: [], alerted: new Map(), queue: [], sent: 0, jolts: 0, recent: [], track: new Map(), device: null, lastFetch: 0 };
+const S = { mode: null, lang: "Hinglish", voice: true, rain: false, pos: null, known: [], alerted: new Map(), queue: [], sent: 0, jolts: 0, recent: [], track: new Map(), device: null, lastFetch: 0, car: "creta", people: 4, hits: [], carCheck: null, agentDone: new Set(), pendingAgent: null, reroute: null };
 
 /* ---------- identity: anonymous ID that rotates daily ---------- */
 async function dailyId() {
@@ -1473,6 +1590,9 @@ function onJolt(e) {
   if (!S.pos) return;
   S.jolts++; $("mJolts").textContent = S.jolts;
   S.recent.push({ lat: S.pos.lat, lon: S.pos.lon, ts: Date.now() });
+  S.hits.push({ ts: Date.now(), type: e.type, peakG: e.peakG, road: $("mRoad").textContent, speed: Math.round(S.pos.speed * 3.6) }); renderCar();
+  // In the car this is triggered by the tyre-pressure sensor; the demo uses the first hard pothole hit.
+  if (e.type === "pothole" && e.peakG >= (S.mode === "demo" ? 0.5 : 0.9) && !S.agentDone.has("tyre")) setTimeout(() => tyreAgent(e), 3500);
   const ev = { device: S.device, lat: +S.pos.lat.toFixed(6), lon: +S.pos.lon.toFixed(6), heading: Math.round(S.pos.heading ?? 0), speed: +(S.pos.speed * 3.6).toFixed(1), peak_g: e.peakG, type: e.type, ts: Date.now() };
   // A jolt where no hazard is known yet: ask the driver once (human-in-the-loop false-alarm filter).
   const known = S.known.some((h) => SS.hav(h.lat, h.lon, ev.lat, ev.lon) < 25);
@@ -1551,14 +1671,23 @@ function tick() {
     if (ahead && dirOk && d < Math.max(warnD, 250) && d < nextD) { next = h; nextD = d; }
   }
   const el = $("alert");
+  // "Fits my car" looks a little further ahead, so the driver can ask about it before the alert
+  const nextCar = next || S.known.filter((h) => h.state === "confirmed").map((h) => ({ h, d: SS.hav(lat, lon, h.lat, h.lon) }))
+    .filter(({ h, d }) => d < 1000 && (heading == null || SS.hdiff(SS.bearing(lat, lon, h.lat, h.lon), heading) < 35)).sort((a, b) => a.d - b.d)[0]?.h;
+  S.carCheck = nextCar ? SadakCar.check(S.car, S.people, nextCar) : null;
+  renderCar(next ? S.carCheck : null);
+  // Flood agent: water ahead that this car should not (or only just) cross.
+  const wAhead = S.known.find((h) => h.family === "water" && h.state === "confirmed" && SS.hav(lat, lon, h.lat, h.lon) < 900 && (heading == null || SS.hdiff(SS.bearing(lat, lon, h.lat, h.lon), heading) < 40));
+  if (wAhead) { const wv = SadakCar.check(S.car, S.people, wAhead); if (wv.level !== "low") floodAgent(wAhead, wv); }
   if (next && nextD < warnD + 150) {
     const dist = Math.max(10, Math.round(nextD / 10) * 10);
     const [t, s] = PHRASE[next.type][S.lang](dist);
+    const v = SadakCar.check(S.car, S.people, next), cl = SadakCar.line(v, S.lang);
     el.className = "alert " + next.type; el.querySelector(".ic").textContent = SS.SYM[next.type];
-    $("aT").textContent = t; $("aS").textContent = `${s} · felt by ${next.devices} cars`;
+    $("aT").textContent = t; $("aS").textContent = v.kind === "pothole" ? `${s} · felt by ${next.devices} cars` : `Felt by ${next.devices} cars`;
     $("aD").innerHTML = `${dist}<small>metres</small>`;
     const last = S.alerted.get(next.id) || 0;
-    if (nextD <= warnD && Date.now() - last > 10 * 60e3) { S.alerted.set(next.id, Date.now()); chime(); setTimeout(() => say(`${t}. ${s}.`), 400); }
+    if (nextD <= warnD && Date.now() - last > 10 * 60e3) { S.alerted.set(next.id, Date.now()); chime(); setTimeout(() => say(`${t}. ${cl}`), 400); }
   } else {
     el.className = "alert clear"; el.querySelector(".ic").textContent = "✓";
     $("aT").textContent = { English: "Road ahead is clear", Hinglish: "Aage raasta saaf hai", Hindi: "आगे रास्ता साफ़ है" }[S.lang];
@@ -1621,11 +1750,16 @@ async function startDemo(routeId) {
   setInterval(() => {
     const dt = 0.1;
     let target = 32 / 3.6;
-    const al = $("alert").className;
-    if (al.includes("breaker")) target = 18 / 3.6; else if (al.includes("pothole")) target = 22 / 3.6; else if (al.includes("water")) target = 9 / 3.6;
+    const al = $("alert").className, cv = S.carCheck;
+    if (al.includes("breaker")) target = (cv?.kind === "breaker" ? cv.speed : 18) / 3.6; else if (al.includes("pothole")) target = 22 / 3.6; else if (al.includes("water")) target = (cv?.kind === "water" ? Math.max(4, cv.speed) : 9) / 3.6;
     const water = truth.find((t) => t.type === "water" && t.active);
     if (water && Math.abs(s - water.s) < 70) target = 5 / 3.6;
     v += (target - v) * 0.12;
+    // Rerouted by the flood agent, or "do not enter" for this car: the demo driver turns back before the water.
+    if (water && s > water.s - 90 && (S.reroute === true || (S.reroute !== false && cv?.kind === "water" && cv.level === "stop"))) {
+      s = Math.max(0, firstS - 300); crossed.clear(); S.alerted.clear();
+      $("tNote").textContent = { English: "turned back before the water · rerouting", Hinglish: "paani se pehle wapas mude · doosra raasta", Hindi: "पानी से पहले वापस मुड़े · दूसरा रास्ता" }[S.lang];
+    }
     const s0 = s; s = Math.min(L_, s + v * dt * 1.6);
     for (const t of truth) {
       if (!t.active || t.type === "water" || crossed.has(t.id) || !((t.s - s0) * (t.s - s) <= 0)) continue;
@@ -1649,8 +1783,95 @@ async function startDemo(routeId) {
   for (const [id, r] of Object.entries(routes)) { const o = document.createElement("option"); o.value = id; o.textContent = r.name; $("route").append(o); }
   try { S.queue = JSON.parse(localStorage.getItem("ss-queue") || "[]"); } catch {}
 })();
+/* ---------- Fits my car: car-specific verdicts, road wear, service and claim log ---------- */
+function seedHits() {
+  // Demo sample: a plausible earlier week of hits for this car (clearly labelled in the panel).
+  const roads = ["Aurobindo Marg", "Outer Ring Road", "Mehrauli-Badarpur Rd", "Press Enclave Marg", "Ring Road underpass"], out = [];
+  for (let i = 0; i < 34; i++) out.push({ ts: Date.now() - (6.5 - i * 0.19) * 864e5, type: i % 3 ? "breaker" : "pothole", peakG: +(0.55 + ((i * 37) % 9) / 10).toFixed(2), road: roads[i % roads.length], speed: 18 + ((i * 7) % 17), sample: true });
+  return out;
+}
+function renderCar(v) {
+  const car = SadakCar.CARS[S.car], w = SadakCar.wear(S.hits);
+  $("carName").textContent = `${car.name} · ${S.people}`;
+  $("carWear").textContent = `wear ${w.pct}%`;
+  const bar = $("carBar");
+  if (v) { bar.className = "car " + v.level; $("carLine").textContent = SadakCar.line(v, S.lang); }
+  else { bar.className = "car"; $("carLine").textContent = { English: `Clearance ${SadakCar.effectiveClearanceMm(car, S.people)} mm with ${S.people} on board · tap for road wear`, Hinglish: `${S.people} logon ke saath clearance ${SadakCar.effectiveClearanceMm(car, S.people)} mm · road wear dekhein`, Hindi: `${S.people} लोगों के साथ क्लीयरेंस ${SadakCar.effectiveClearanceMm(car, S.people)} मिमी · रोड वियर देखें` }[S.lang]; }
+  if (!$("health").hidden) renderHealth();
+}
+function renderHealth() {
+  const car = SadakCar.CARS[S.car], w = SadakCar.wear(S.hits);
+  $("hTitle").textContent = `My ${car.name}`;
+  $("hSpec").textContent = `Ground clearance ${car.clearanceMm} mm unladen, ${SadakCar.effectiveClearanceMm(car, S.people)} mm with ${S.people} on board · safe water depth about ${car.wadeMm / 10} cm${car.assumed ? " (assumed)" : ""}. In the car these come from the VIN, live load and seat sensors.`;
+  $("hPct").textContent = `${w.pct}%`; $("hBar").style.width = w.pct + "%";
+  $("hMsg").textContent = w.due ? `${w.hits} hard hits this week. A suspension and alignment check is due before tyre wear shows.` : `${w.hits} hard hits this week. No check needed yet.`;
+  $("hLog").innerHTML = "";
+  S.hits.slice(-6).reverse().forEach((h) => { const d = document.createElement("div"); d.textContent = `${new Date(h.ts).toLocaleString("en-IN", { weekday: "short", hour: "2-digit", minute: "2-digit" })} · ${h.type} · ${h.peakG} g at ${h.speed} km/h · ${h.road}${h.sample ? " · sample" : ""}`; $("hLog").append(d); });
+  const more = document.createElement("div"); more.textContent = `${S.hits.length} entries in total, with time, place, speed and jolt size`; $("hLog").append(more);
+}
+$("carBar").onclick = () => { $("health").hidden = !$("health").hidden; if (!$("health").hidden) renderHealth(); };
+$("hClose").onclick = () => { $("health").hidden = true; };
+$("hBook").onclick = () => { $("hBook").innerHTML = "<b>Request sent to Hyundai service (demo)</b><br><span class=\"note\">The centre gets this car's hit log, so the technician knows where to look</span>"; };
+
+/* ---------- agents: act on what only the car knows, after one "haan" from the driver ---------- */
+const T3 = (en, hl, hi) => ({ English: en, Hinglish: hl, Hindi: hi }[S.lang]);
+function propose(id, text, onYes, onNo) {
+  if (S.agentDone.has(id)) return true;
+  if (S.pendingAgent || S.pendingJolt) return false;
+  S.agentDone.add(id); S.pendingAgent = { id, onYes, onNo };
+  openConvo(); $("yn").hidden = false; bubble("a", "Sadak Sense · agent", text); chime();
+  setTimeout(() => { say(text); if (SR) setTimeout(listen, 5200); }, 300);
+  clearTimeout(S.agentTimer); S.agentTimer = setTimeout(() => S.pendingAgent?.id === id && resolveAgent(null), 16000);
+  return true;
+}
+function resolveAgent(ok) {
+  const a = S.pendingAgent; if (!a) return; S.pendingAgent = null; $("yn").hidden = true; clearTimeout(S.agentTimer);
+  if (ok === true) a.onYes(); else if (ok === false) a.onNo?.();
+  else agentSay(T3("No answer, so I haven't done anything.", "Jawab nahi mila, isliye maine kuch nahi kiya.", "जवाब नहीं मिला, इसलिए मैंने कुछ नहीं किया।"));
+}
+function agentSay(text) { bubble("a", "Sadak Sense · agent", text); say(text); }
+// Keep home updated: when a road hazard changes the trip, the car tells the family by itself
+// through the paired phone (simulated in the demo). Turned on once in setup, not per message.
+function tellHome(msg) {
+  if (!S.homeOn) return false;
+  bubble("a", T3("Message to Home · demo", "Ghar ko message · demo", "घर को संदेश · डेमो"), `“${msg}”`);
+  return true;
+}
+function floodAgent(h, v) {
+  const text = v.level === "stop"
+    ? T3(`The underpass ahead has about ${v.depthCm} cm of water, not safe for your ${v.car.name}. Shall I take the other road?`,
+         `Aage underpass mein lagbhag ${v.depthCm} cm paani hai, aapki ${v.car.name} ke liye safe nahi. Doosre raaste se le chalun?`,
+         `आगे अंडरपास में लगभग ${v.depthCm} सेमी पानी है, आपकी ${v.car.name} के लिए सुरक्षित नहीं। दूसरे रास्ते से ले चलूँ?`)
+    : T3(`About ${v.depthCm} cm of water in the underpass, close to your ${v.car.name}'s limit. Shall I take the other road?`,
+         `Underpass mein lagbhag ${v.depthCm} cm paani hai, aapki ${v.car.name} ki limit ke kareeb. Doosre raaste se le chalun?`,
+         `अंडरपास में लगभग ${v.depthCm} सेमी पानी है, आपकी ${v.car.name} की सीमा के क़रीब। दूसरे रास्ते से ले चलूँ?`);
+  propose("flood-" + h.id, text,
+    () => { S.reroute = true;
+            const told = tellHome(T3("The underpass is flooded, coming by another road. About 10 minutes late.", "Underpass mein paani bhara hai, doosre raaste se aa rahe hain. Lagbhag 10 minute late.", "अंडरपास में पानी भरा है, दूसरे रास्ते से आ रहे हैं। लगभग 10 मिनट देर।"));
+            agentSay(T3(`Rerouting around the underpass.${told ? " I've told home you'll be about 10 minutes late." : ""}`, `Underpass ke bagal se le ja raha hoon.${told ? " Ghar pe bata diya ki 10 minute late honge." : ""}`, `अंडरपास से हटकर ले जा रहा हूँ।${told ? " घर पर बता दिया कि 10 मिनट देर होगी।" : ""}`)); },
+    () => { S.reroute = false; agentSay(T3("Okay. Walking pace through the water, and don't stop.", "Theek hai. Paani mein dheere chaliye, aur rukiye mat.", "ठीक है। पानी में धीरे चलें, और रुकें नहीं।")); });
+}
+// Damage agent: a hard pothole hit followed by falling tyre pressure (TPMS, simulated in the demo).
+function tyreAgent(e) {
+  if (S.agentDone.has("tyre")) return;
+  if (S.pendingAgent || S.pendingJolt) return setTimeout(() => tyreAgent(e), 3000);
+  const text = T3(`That was a hard pothole hit, and the front-left tyre pressure is dropping, 33 to 28 psi. Shall I book this evening at the nearest Hyundai service centre and prepare an insurance claim draft?`,
+    `Bade gaddhe ke baad front-left tyre ka pressure gir raha hai, 33 se 28 psi. Nearest Hyundai service pe aaj shaam ka slot book karun, aur insurance claim ka draft bana doon?`,
+    `बड़े गड्ढे के बाद आगे-बाएँ टायर का प्रेशर गिर रहा है, 33 से 28 psi। नज़दीकी Hyundai सर्विस पर आज शाम का स्लॉट बुक करूँ, और इंश्योरेंस क्लेम का ड्राफ़्ट बना दूँ?`);
+  propose("tyre", text,
+    () => { S.booked = true; renderCar();
+            tellHome(T3("A tyre took a hard hit, so driving slowly and may be a little late. The car is booked at Hyundai service this evening.", "Ek gaddhe se tyre mein dikkat lag rahi hai, isliye dheere aa rahe hain, thodi der ho sakti hai. Shaam ko Hyundai service pe dikha denge.", "एक गड्ढे से टायर में दिक़्क़त लग रही है, इसलिए धीरे आ रहे हैं, थोड़ी देर हो सकती है। शाम को Hyundai सर्विस पर दिखा देंगे।"));
+            agentSay(T3(`Booked for 6:30 pm at the nearest Hyundai service centre (demo). The claim draft has the time, place, your speed, the ${e.peakG} g jolt and the tyre pressure log. Check it before you send it.`,
+              `Shaam 6:30 ka slot book ho gaya, nearest Hyundai service pe (demo). Claim draft mein time, jagah, speed, ${e.peakG} g ka jhatka aur tyre pressure log hai. Bhejne se pehle dekh lijiye.`,
+              `शाम 6:30 का स्लॉट बुक हो गया, नज़दीकी Hyundai सर्विस पर (डेमो)। क्लेम ड्राफ़्ट में समय, जगह, गति, ${e.peakG} g का झटका और टायर प्रेशर लॉग है। भेजने से पहले देख लें।`)); },
+    () => agentSay(T3("Okay. Stay under 60 and check the tyre at the next stop.", "Theek hai. 60 se neeche chaliye aur agle stop pe tyre check kar lijiye.", "ठीक है। 60 से नीचे चलें और अगले स्टॉप पर टायर जाँच लें।")));
+}
+
 async function go(mode) {
   S.mode = mode; S.lang = $("lang").value; S.rain = $("rain").checked; S.device = await dailyId();
+  S.car = $("carSel").value; S.people = +$("people").value; S.homeOn = $("homeOn").checked; S.hits = seedHits(); renderCar();
+  // Browser-only edition: this page runs its own virtual fleet, so rain floods its underpass too.
+  if (S.rain && window.SSMods) SS.api("/api/sim", { monsoon: true }).catch(() => {});
   $("start").hidden = true; chime();
   if (mode === "real") await startReal(); else await startDemo($("route").value);
   setInterval(tick, 400); setInterval(flush, 3000); drawTrace();
@@ -1673,11 +1894,19 @@ $("briefBtn").onclick = async () => {
 /* ---------- two-way voice: Hinglish / Hindi / English ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, listening = false;
-const CHIPS = { Hinglish: ["Aage koi gaddha hai?", "Underpass mein paani hai kya?", "Yahan bada gaddha hai", "Aaj ka road brief do"], Hindi: ["आगे कोई गड्ढा है?", "अंडरपास में पानी है क्या?", "यहाँ बड़ा गड्ढा है", "आज का रोड ब्रीफ़ दो"], English: ["Any pothole ahead?", "Is the underpass flooded?", "Pothole here", "Give me today's road brief"] };
+const CHIPS = { Hinglish: ["Aage koi gaddha hai?", "Meri gaadi nikal jayegi?", "Underpass mein paani hai kya?", "Yahan bada gaddha hai", "Aaj ka road brief do"], Hindi: ["आगे कोई गड्ढा है?", "मेरी गाड़ी निकल जाएगी?", "अंडरपास में पानी है क्या?", "यहाँ बड़ा गड्ढा है", "आज का रोड ब्रीफ़ दो"], English: ["Any pothole ahead?", "Will my car make it?", "Is the underpass flooded?", "Pothole here", "Give me today's road brief"] };
 function bubble(cls, who, text) { const d = document.createElement("div"); d.className = cls; d.innerHTML = `<span class="who">${who}</span>`; d.append(document.createTextNode(text)); $("msgs").append(d); $("msgs").scrollTop = 1e6; while ($("msgs").children.length > 8) $("msgs").firstChild.remove(); }
 function openConvo() { $("convo").hidden = false; $("chips").innerHTML = ""; for (const c of CHIPS[S.lang]) { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = c; b.onclick = () => ask(c); $("chips").append(b); } }
 async function ask(text) {
   openConvo(); bubble("u", S.lang === "English" ? "You" : "Aap", text);
+  const itn = SadakVoice.intent(text).name;
+  if (S.pendingAgent && (itn === "yes" || itn === "no")) return resolveAgent(itn === "yes");
+  if (itn === "ask_car") {
+    // Answered in the car from its own specification and load: no server, works offline.
+    let lang = SadakVoice.detectLang(text); if (S.lang === "Hinglish" && lang === "Hindi") lang = "Hinglish";
+    const r = SadakVoice.reply(text, { prefer: S.lang, carCheck: S.carCheck ? SadakCar.line(S.carCheck, lang) : null });
+    bubble("a", "Sadak Sense", r.reply); const keep = S.lang; S.lang = r.lang; say(r.reply); S.lang = keep; return;
+  }
   const p = S.pos || {};
   try {
     const r = await SS.api("/api/ask", { text, lat: p.lat, lon: p.lon, heading: p.heading, device: S.device, routeId: S.routeId, pending: S.pendingJolt ? { type: S.pendingJolt.type } : null, prefer: S.lang });
